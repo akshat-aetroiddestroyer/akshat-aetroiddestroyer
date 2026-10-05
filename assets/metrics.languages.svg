@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="90" viewBox="0 0 860 90">
+<rect width="860" height="90" rx="10" fill="#0b1220" stroke="#1c2a45"/>
+<text x="430" y="40" text-anchor="middle" fill="#dbe4f5" font-family="monospace" font-size="14">Stats placeholder</text>
+<text x="430" y="62" text-anchor="middle" fill="#6b7a99" font-family="monospace" font-size="12">Run Actions > Metrics > Run workflow to replace this with live stats</text>
+</svg>
