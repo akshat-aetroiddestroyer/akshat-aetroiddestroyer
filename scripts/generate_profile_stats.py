@@ -5,12 +5,10 @@ from datetime import datetime, time, timedelta, timezone
 import html
 import json
 import os
-import re
 import sys
 import tempfile
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 
@@ -62,32 +60,6 @@ def graphql_post(query: str, variables: dict, token: str):
         )
         raise RuntimeError(f"GitHub GraphQL returned errors: {messages}")
     return result.get("data")
-
-
-def repository_pages(token: str):
-    url = f"{API_ROOT}/users/{USERNAME}/repos?type=owner&per_page=100&sort=full_name"
-    visited = set()
-    while url:
-        parsed = urlparse(url)
-        expected_path = f"/users/{USERNAME}/repos"
-        if parsed.scheme != "https" or parsed.netloc != "api.github.com" or parsed.path != expected_path:
-            raise RuntimeError(f"Unexpected GitHub repository pagination URL: {url}")
-        if url in visited:
-            raise RuntimeError(f"GitHub API pagination loop detected at {url}")
-        visited.add(url)
-
-        page, link_header = api_get(url, token)
-        if not isinstance(page, list):
-            raise RuntimeError("GitHub repository API returned an unexpected response.")
-        yield page
-
-        next_url = None
-        for link in link_header.split(","):
-            match = re.match(r'\s*<([^>]+)>\s*;\s*rel="([^"]+)"', link)
-            if match and match.group(2) == "next":
-                next_url = match.group(1)
-                break
-        url = next_url
 
 
 def contribution_calendar(token: str, start_date, end_date):
@@ -206,12 +178,10 @@ def collect_stats(token: str):
     user, _ = api_get(f"{API_ROOT}/users/{USERNAME}", token)
     if (
         not isinstance(user, dict)
-        or not isinstance(user.get("followers"), int)
-        or isinstance(user["followers"], bool)
         or not isinstance(user.get("public_repos"), int)
         or isinstance(user["public_repos"], bool)
     ):
-        raise RuntimeError("GitHub user API returned invalid follower or public repository data.")
+        raise RuntimeError("GitHub user API returned invalid public repository data.")
     try:
         account_created = datetime.fromisoformat(
             user["created_at"].replace("Z", "+00:00")
@@ -220,33 +190,6 @@ def collect_stats(token: str):
         raise RuntimeError(
             "GitHub user API returned an invalid account creation date."
         ) from error
-
-    repositories = {}
-    for page in repository_pages(token):
-        for repo in page:
-            if not isinstance(repo, dict) or not isinstance(repo.get("private"), bool):
-                raise RuntimeError("GitHub repository API returned an invalid repository.")
-            if repo["private"]:
-                continue
-            owner = repo.get("owner")
-            if not isinstance(owner, dict) or not isinstance(owner.get("login"), str):
-                raise RuntimeError("GitHub repository API returned invalid owner data.")
-            if owner["login"].lower() != USERNAME.lower():
-                continue
-            repo_id = repo.get("id")
-            if not isinstance(repo_id, int) or isinstance(repo_id, bool):
-                raise RuntimeError("GitHub repository API returned a repository without a valid id.")
-            if repo_id in repositories:
-                raise RuntimeError(f"GitHub repository API returned duplicate repository id {repo_id}.")
-            stars, forks = repo.get("stargazers_count"), repo.get("forks_count")
-            if (
-                not isinstance(stars, int)
-                or isinstance(stars, bool)
-                or not isinstance(forks, int)
-                or isinstance(forks, bool)
-            ):
-                raise RuntimeError("GitHub repository API returned invalid star or fork data.")
-            repositories[repo_id] = (stars, forks)
 
     now = datetime.now(timezone.utc)
     end_date = now.date()
@@ -266,9 +209,7 @@ def collect_stats(token: str):
     current_streak, longest_streak = calculate_streaks(all_days, start_date, end_date)
 
     return {
-        "followers": user["followers"],
         "repositories": user["public_repos"],
-        "stars": sum(stars for stars, _ in repositories.values()),
         "contributions": contributions,
         "current_streak": current_streak,
         "longest_streak": longest_streak,
@@ -277,32 +218,30 @@ def collect_stats(token: str):
 
 def render_svg(stats):
     labels = (
-        ("Total stars", stats["stars"]),
         ("Public repos", stats["repositories"]),
-        ("Followers", stats["followers"]),
         ("Contributions (1y)", stats["contributions"]),
         ("Current streak", f'{stats["current_streak"]:,} days'),
         ("Longest streak", f'{stats["longest_streak"]:,} days'),
     )
     tiles = []
     for index, (label, value) in enumerate(labels):
-        column, row = index % 3, index // 3
-        x, y = 22 + column * 226, 64 + row * 74
+        column, row = index % 2, index // 2
+        x, y = 20 + column * 290, 60 + row * 72
         formatted_value = value if isinstance(value, str) else f"{value:,}"
         tiles.append(
             f'<g transform="translate({x},{y})">'
-            '<rect width="210" height="62" rx="9" fill="#111a2e" stroke="#283552"/>'
+            '<rect width="270" height="60" rx="9" fill="#111a2e" stroke="#283552"/>'
             f'<text x="14" y="23" fill="#9ba9c7" font-size="11" '
             f'font-family="Segoe UI,Arial,sans-serif">{html.escape(label)}</text>'
-            f'<text x="14" y="49" fill="#c4b5fd" font-size="21" font-weight="700" '
+            f'<text x="14" y="48" fill="#c4b5fd" font-size="21" font-weight="700" '
             f'font-family="Segoe UI,Arial,sans-serif">{formatted_value}</text>'
             "</g>"
         )
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="720" height="222" viewBox="0 0 720 222" role="img" aria-labelledby="title description">
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="600" height="214" viewBox="0 0 600 214" role="img" aria-labelledby="title description">
   <title id="title">GitHub profile statistics for {html.escape(USERNAME)}</title>
-  <desc id="description">GitHub stats for {html.escape(USERNAME)} at a glance: {stats["stars"]} total stars, {stats["repositories"]} public repositories, {stats["followers"]} followers, {stats["contributions"]} contributions in the last year, {stats["current_streak"]} day current streak, and {stats["longest_streak"]} day longest streak.</desc>
-  <rect x="1" y="1" width="718" height="220" rx="14" fill="#0b1220" stroke="#283552"/>
-  <text x="22" y="34" fill="#e2e8f0" font-size="17" font-weight="700" font-family="Segoe UI,Arial,sans-serif">{html.escape(USERNAME)} <tspan fill="#9ba9c7" font-weight="400">at a glance</tspan></text>
+  <desc id="description">GitHub stats for {html.escape(USERNAME)} at a glance: {stats["repositories"]} public repositories, {stats["contributions"]} contributions in the last year, {stats["current_streak"]} day current streak, and {stats["longest_streak"]} day longest streak.</desc>
+  <rect x="1" y="1" width="598" height="212" rx="14" fill="#0b1220" stroke="#283552"/>
+  <text x="20" y="32" fill="#e2e8f0" font-size="17" font-weight="700" font-family="Segoe UI,Arial,sans-serif">{html.escape(USERNAME)} <tspan fill="#9ba9c7" font-weight="400">at a glance</tspan></text>
   {''.join(tiles)}
 </svg>
 '''

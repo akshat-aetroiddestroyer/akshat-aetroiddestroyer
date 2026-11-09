@@ -68,5 +68,5 @@ Hi, I'm **Akshat**, a B.Tech engineering student who builds AI-powered products.
 </p>
 
 <p align="center">
-  <img src="assets/profile-stats.svg" alt="GitHub stars, public repositories, followers, yearly contributions, and streaks" width="100%">
+  <img src="assets/profile-stats.svg" alt="GitHub public repositories, yearly contributions, and streaks" width="100%">
 </p>
