@@ -8,6 +8,7 @@ Your username, links and dot portrait are already built in.
    - GitHub > Settings > Developer settings > Personal access tokens (classic); scopes `repo`, `read:user`.
    - Repo > Settings > Secrets and variables > Actions > New secret: `METRICS_TOKEN` = the token.
    - Actions tab > Metrics > Run workflow (replaces assets/metrics.languages.svg).
+   - Actions tab > Profile stats > Run workflow (generates assets/profile-stats.svg using the built-in GITHUB_TOKEN).
 4. Pin your best 4-6 repos on your profile page.
 
 ## Rebuilding the hero (only if you change something)

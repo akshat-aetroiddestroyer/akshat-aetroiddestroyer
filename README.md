@@ -66,3 +66,7 @@ Hi, I'm **Akshat**, a B.Tech engineering student who builds AI-powered products.
 <p align="center">
   <img src="assets/metrics.languages.svg" alt="Most used languages" width="100%">
 </p>
+
+<p align="center">
+  <img src="assets/profile-stats.svg" alt="GitHub followers, public repositories, stars, and forks" width="100%">
+</p>
