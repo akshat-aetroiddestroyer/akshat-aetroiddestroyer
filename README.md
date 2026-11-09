@@ -66,8 +66,3 @@ Hi, I'm **Akshat**, a B.Tech engineering student who builds AI-powered products.
 <p align="center">
   <img src="assets/metrics.languages.svg" alt="Most used languages" width="100%">
 </p>
-
-<p align="center">
-  <img src="https://github-readme-streak-stats.herokuapp.com/?user=akshat-aetroiddestroyer&theme=tokyonight&hide_border=true&background=0B1220" alt="streak">
-  <img src="https://github-readme-stats.vercel.app/api?username=akshat-aetroiddestroyer&show_icons=true&theme=tokyonight&hide_border=true&bg_color=0B1220" alt="stats">
-</p>
